@@ -4,10 +4,20 @@ import functools
 import sys
 
 from .. import __version__, log
-from ..doubleclick import click, ctx
+from ..doubleclick import click
 
 
 cli_logger = log.get(__name__)
+
+
+class AppContext(object):
+    def __init__(self):
+        self.config = None
+        self.passwords = {}
+        self.verbosity = None
+
+
+pass_context = click.make_pass_decorator(AppContext, ensure=True)
 
 
 class CliError(RuntimeError):
@@ -56,8 +66,9 @@ def validate_verbosity(ctx, param, value):
               callback=validate_verbosity,
               help='Either CRITICAL, ERROR, WARNING, INFO or DEBUG')
 @click.version_option(version=__version__)
+@pass_context
 @catch_errors
-def app(verbosity):
+def app(ctx, verbosity):
     '''
     vdirsyncer -- synchronize calendars and contacts
     '''
@@ -65,19 +76,15 @@ def app(verbosity):
     log.add_handler(log.stdout_handler)
     log.set_level(verbosity)
 
-    if ctx.obj is None:
-        ctx.obj = {}
-
-    ctx.obj['verbosity'] = verbosity
-
-    if 'config' not in ctx.obj:
-        ctx.obj['config'] = load_config()
+    ctx.verbosity = verbosity
+    if not ctx.config:
+        ctx.config = load_config()
 
 main = app
 
 
 def max_workers_callback(ctx, param, value):
-    if value == 0 and ctx.obj['verbosity'] == log.logging.DEBUG:
+    if value == 0 and ctx.obj.verbosity == log.logging.DEBUG:
         value = 1
 
     cli_logger.debug('Using {} maximal workers.'.format(value))
@@ -99,8 +106,9 @@ max_workers_option = click.option(
               help=('Do/Don\'t abort synchronization when all items are about '
                     'to be deleted from both sides.'))
 @max_workers_option
+@pass_context
 @catch_errors
-def sync(pairs, force_delete, max_workers):
+def sync(ctx, pairs, force_delete, max_workers):
     '''
     Synchronize the given pairs. If no arguments are given, all will be
     synchronized.
@@ -119,7 +127,7 @@ def sync(pairs, force_delete, max_workers):
     '''
     from .tasks import prepare_pair, sync_collection
     from .utils import parse_pairs_args, WorkerQueue
-    general, all_pairs, all_storages = ctx.obj['config']
+    general, all_pairs, all_storages = ctx.config
 
     wq = WorkerQueue(max_workers)
 
@@ -138,8 +146,9 @@ def sync(pairs, force_delete, max_workers):
 @app.command()
 @click.argument('pairs', nargs=-1)
 @max_workers_option
+@pass_context
 @catch_errors
-def metasync(pairs, max_workers):
+def metasync(ctx, pairs, max_workers):
     '''
     Synchronize metadata of the given pairs.
 
@@ -147,7 +156,7 @@ def metasync(pairs, max_workers):
     '''
     from .tasks import prepare_pair, metasync_collection
     from .utils import parse_pairs_args, WorkerQueue
-    general, all_pairs, all_storages = ctx.obj['config']
+    general, all_pairs, all_storages = ctx.config
 
     wq = WorkerQueue(max_workers)
 
@@ -165,14 +174,15 @@ def metasync(pairs, max_workers):
 @app.command()
 @click.argument('pairs', nargs=-1)
 @max_workers_option
+@pass_context
 @catch_errors
-def discover(pairs, max_workers):
+def discover(ctx, pairs, max_workers):
     '''
     Refresh collection cache for the given pairs.
     '''
     from .tasks import discover_collections
     from .utils import WorkerQueue
-    general, all_pairs, all_storages = ctx.obj['config']
+    general, all_pairs, all_storages = ctx.config
     wq = WorkerQueue(max_workers)
 
     for pair in (pairs or all_pairs):
@@ -197,8 +207,9 @@ def discover(pairs, max_workers):
 
 @app.command()
 @click.argument('collection')
+@pass_context
 @catch_errors
-def repair(collection):
+def repair(ctx, collection):
     '''
     Repair a given collection.
 
@@ -209,7 +220,7 @@ def repair(collection):
     collection of the `calendars_local` storage.
     '''
     from .tasks import repair_collection
-    general, all_pairs, all_storages = ctx.obj['config']
+    general, all_pairs, all_storages = ctx.config
     repair_collection(general, all_pairs, all_storages, collection)
 
 # Not sure if useful. I originally wanted it because:

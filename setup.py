@@ -32,7 +32,7 @@ setup(
     },
     install_requires=[
         # https://github.com/mitsuhiko/click/issues/200
-        'click>=3.1',
+        'git+https://github.com/mitsuhiko/click',
         'requests',
         'lxml>=3.0',
         # https://github.com/sigmavirus24/requests-toolbelt/pull/28
