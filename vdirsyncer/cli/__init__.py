@@ -3,6 +3,8 @@
 import functools
 import sys
 
+import click_log
+
 from .. import __version__, log
 from ..doubleclick import click
 
@@ -14,7 +16,7 @@ class AppContext(object):
     def __init__(self):
         self.config = None
         self.passwords = {}
-        self.verbosity = None
+        self.logger = None
 
 
 pass_context = click.make_pass_decorator(AppContext, ensure=True)
@@ -62,21 +64,17 @@ def validate_verbosity(ctx, param, value):
 
 
 @click.group()
-@click.option('--verbosity', '-v', default='INFO',
-              callback=validate_verbosity,
-              help='Either CRITICAL, ERROR, WARNING, INFO or DEBUG')
+@click_log.init('vdirsyncer')
+@click_log.simple_verbosity_option()
 @click.version_option(version=__version__)
 @pass_context
 @catch_errors
-def app(ctx, verbosity):
+def app(ctx):
     '''
     vdirsyncer -- synchronize calendars and contacts
     '''
     from .utils import load_config
-    log.add_handler(log.stdout_handler)
-    log.set_level(verbosity)
 
-    ctx.verbosity = verbosity
     if not ctx.config:
         ctx.config = load_config()
 
@@ -84,7 +82,7 @@ main = app
 
 
 def max_workers_callback(ctx, param, value):
-    if value == 0 and ctx.obj.verbosity == log.logging.DEBUG:
+    if value == 0 and click_log.get_level() == log.logging.DEBUG:
         value = 1
 
     cli_logger.debug('Using {} maximal workers.'.format(value))

@@ -560,6 +560,7 @@ class WorkerQueue(object):
         self._workers = []
         self._exceptions = []
         self._max_workers = max_workers
+        self._ctx = click.get_current_context()
 
     def _worker(self):
         # This is a daemon thread. Since the global namespace is going to
@@ -569,24 +570,25 @@ class WorkerQueue(object):
         _Empty = queue.Empty
         _handle_cli_error = handle_cli_error
 
-        while True:
-            try:
-                func = self._queue.get(False)
-            except (_TypeError, _Empty):
-                # Any kind of error might be raised if vdirsyncer just finished
-                # processing all items and the interpreter is shutting down,
-                # yet the workers try to get new tasks.
-                # https://github.com/untitaker/vdirsyncer/issues/167
-                # http://bugs.python.org/issue14623
-                break
+        with self._ctx:
+            while True:
+                try:
+                    func = self._queue.get(False)
+                except (_TypeError, _Empty):
+                    # Any kind of error might be raised if vdirsyncer just
+                    # finished processing all items and the interpreter is
+                    # shutting down, yet the workers try to get new tasks.
+                    # https://github.com/untitaker/vdirsyncer/issues/167
+                    # http://bugs.python.org/issue14623
+                    break
 
-            try:
-                func(wq=self)
-            except Exception as e:
-                _handle_cli_error()
-                self._exceptions.append(e)
-            finally:
-                self._queue.task_done()
+                try:
+                    func(wq=self)
+                except Exception as e:
+                    _handle_cli_error()
+                    self._exceptions.append(e)
+                finally:
+                    self._queue.task_done()
 
     def spawn_worker(self):
         if self._max_workers and len(self._workers) >= self._max_workers:

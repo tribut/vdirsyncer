@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import logging
 import os
 import platform
 import stat
@@ -7,12 +8,14 @@ import stat
 import click
 from click.testing import CliRunner
 
+import click_log
+
 import pytest
 
 import requests
 
-from vdirsyncer import doubleclick, log, utils
-from vdirsyncer.cli import AppContext, pass_context
+from vdirsyncer import doubleclick, utils
+from vdirsyncer.cli import pass_context
 
 # These modules might be uninitialized and unavailable if not explicitly
 # imported
@@ -45,11 +48,12 @@ def empty_password_storages(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def no_debug_output(request):
-    old = log._level
-    log.set_level(log.logging.WARNING)
+    logger = click_log.basic_config('vdirsyncer')
+    logger.setLevel(logging.WARNING)
+    old = logger.level
 
     def teardown():
-        log.set_level(old)
+        logger.setLevel(old)
 
     request.addfinalizer(teardown)
 
