@@ -36,6 +36,9 @@ command__install_tests() {
     _optimize_pip
     _davserver $DAV_SERVER
     [ "$TRAVIS" != "true" ] || $PIP_INSTALL coverage coveralls
+
+    $PIP_INSTALL git+https://github.com/mitsuhiko/click
+
     $PIP_INSTALL --editable .
 }
 
