@@ -34,6 +34,7 @@ setup(
         # https://github.com/mitsuhiko/click/issues/200
         'click',
         'click_log',
+        'click_threading',
         'requests',
         'lxml>=3.0',
         # https://github.com/sigmavirus24/requests-toolbelt/pull/28

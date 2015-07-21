@@ -14,7 +14,7 @@ import pytest
 
 import requests
 
-from vdirsyncer import doubleclick, utils
+from vdirsyncer import utils
 from vdirsyncer.cli import pass_context
 
 # These modules might be uninitialized and unavailable if not explicitly
@@ -116,7 +116,7 @@ def test_get_password_from_command(tmpdir):
     st = os.stat(filepath)
     os.chmod(filepath, st.st_mode | stat.S_IEXEC)
 
-    @doubleclick.click.command()
+    @click.command()
     @pass_context
     def fake_app(ctx):
         ctx.config = {'password_command': filepath}, {}, {}
@@ -163,7 +163,7 @@ def test_set_keyring_password(monkeypatch):
 
     monkeypatch.setattr(utils.password, 'keyring', KeyringMock())
 
-    @doubleclick.click.command()
+    @click.command()
     @pass_context
     def fake_app(ctx):
         x = utils.password.get_password('foouser', 'http://example.com/a/b')
@@ -183,12 +183,12 @@ def test_get_password_from_cache(monkeypatch):
     user = 'my_user'
     resource = 'http://example.com'
 
-    @doubleclick.click.command()
+    @click.command()
     @pass_context
     def fake_app(ctx):
         x = utils.password.get_password(user, resource)
         click.echo('Password is {}'.format(x))
-        monkeypatch.setattr(doubleclick.click, 'prompt', blow_up)
+        monkeypatch.setattr(click, 'prompt', blow_up)
 
         assert (user, 'example.com') in ctx.passwords
         x = utils.password.get_password(user, resource)

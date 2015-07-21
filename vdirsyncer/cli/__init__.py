@@ -3,10 +3,11 @@
 import functools
 import sys
 
+import click
+
 import click_log
 
 from .. import __version__, log
-from ..doubleclick import click
 
 
 cli_logger = log.get(__name__)
@@ -129,16 +130,15 @@ def sync(ctx, pairs, force_delete, max_workers):
 
     wq = WorkerQueue(max_workers)
 
-    for pair_name, collections in parse_pairs_args(pairs, all_pairs):
-        wq.put(functools.partial(prepare_pair, pair_name=pair_name,
-                                 collections=collections,
-                                 general=general, all_pairs=all_pairs,
-                                 all_storages=all_storages,
-                                 force_delete=force_delete,
-                                 callback=sync_collection))
-        wq.spawn_worker()
-
-    wq.join()
+    with wq.join():
+        for pair_name, collections in parse_pairs_args(pairs, all_pairs):
+            wq.put(functools.partial(prepare_pair, pair_name=pair_name,
+                                     collections=collections,
+                                     general=general, all_pairs=all_pairs,
+                                     all_storages=all_storages,
+                                     force_delete=force_delete,
+                                     callback=sync_collection))
+            wq.spawn_worker()
 
 
 @app.command()
@@ -158,15 +158,14 @@ def metasync(ctx, pairs, max_workers):
 
     wq = WorkerQueue(max_workers)
 
-    for pair_name, collections in parse_pairs_args(pairs, all_pairs):
-        wq.put(functools.partial(prepare_pair, pair_name=pair_name,
-                                 collections=collections,
-                                 general=general, all_pairs=all_pairs,
-                                 all_storages=all_storages,
-                                 callback=metasync_collection))
-        wq.spawn_worker()
-
-    wq.join()
+    with wq.join():
+        for pair_name, collections in parse_pairs_args(pairs, all_pairs):
+            wq.put(functools.partial(prepare_pair, pair_name=pair_name,
+                                     collections=collections,
+                                     general=general, all_pairs=all_pairs,
+                                     all_storages=all_storages,
+                                     callback=metasync_collection))
+            wq.spawn_worker()
 
 
 @app.command()
@@ -183,24 +182,22 @@ def discover(ctx, pairs, max_workers):
     general, all_pairs, all_storages = ctx.config
     wq = WorkerQueue(max_workers)
 
-    for pair in (pairs or all_pairs):
-        try:
-            name_a, name_b, pair_options = all_pairs[pair]
-        except KeyError:
-            raise CliError('Pair not found: {}\n'
-                           'These are the pairs found: {}'
-                           .format(pair, list(all_pairs)))
+    with wq.join():
+        for pair in (pairs or all_pairs):
+            try:
+                name_a, name_b, pair_options = all_pairs[pair]
+            except KeyError:
+                raise CliError('Pair not found: {}\n'
+                               'These are the pairs found: {}'
+                               .format(pair, list(all_pairs)))
 
-        wq.put(functools.partial(
-            discover_collections,
-            status_path=general['status_path'], name_a=name_a, name_b=name_b,
-            pair_name=pair, config_a=all_storages[name_a],
-            config_b=all_storages[name_b], pair_options=pair_options,
-            skip_cache=True
-        ))
-        wq.spawn_worker()
-
-    wq.join()
+            wq.put(functools.partial(
+                discover_collections, status_path=general['status_path'],
+                name_a=name_a, name_b=name_b, pair_name=pair,
+                config_a=all_storages[name_a], config_b=all_storages[name_b],
+                pair_options=pair_options, skip_cache=True
+            ))
+            wq.spawn_worker()
 
 
 @app.command()

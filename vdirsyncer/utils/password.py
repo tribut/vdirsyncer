@@ -2,11 +2,12 @@
 
 import threading
 
+import click
+
 from . import expand_path
 from .compat import urlparse
 from .. import exceptions, log
 from ..cli import AppContext
-from ..doubleclick import click
 
 logger = log.get(__name__)
 password_key_prefix = 'vdirsyncer:'
